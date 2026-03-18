@@ -1,0 +1,145 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isParticipant(participants) {
+      return isAuthenticated() && participants.contains(request.auth.uid);
+    }
+    
+    function isMember(members) {
+      return isAuthenticated() && members.contains(request.auth.uid);
+    }
+    
+    function isAdminOrMember(admins, members) {
+      return isAuthenticated() && 
+             (admins.contains(request.auth.uid) || members.contains(request.auth.uid));
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: isAuthenticated() && isOwner(userId);
+      allow update: isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow delete: isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+    
+    // Friend Requests collection
+    match /friendRequests/{requestId} {
+      allow read: isAuthenticated() && 
+                 (resource.data.fromUid == request.auth.uid || 
+                  resource.data.toUid == request.auth.uid || 
+                  isAdmin());
+      allow create: isAuthenticated() && 
+                   (request.resource.data.fromUid == request.auth.uid || 
+                    request.resource.data.toUid == request.auth.uid);
+      allow update: isAuthenticated() && 
+                   (resource.data.fromUid == request.auth.uid || 
+                    resource.data.toUid == request.auth.uid || 
+                    isAdmin());
+      allow delete: isAuthenticated() && 
+                   (resource.data.fromUid == request.auth.uid || 
+                    resource.data.toUid == request.auth.uid || 
+                    isAdmin());
+    }
+    
+    // Friends collection
+    match /friends/{friendId} {
+      allow read: isAuthenticated() && 
+                 (resource.data.userA == request.auth.uid || 
+                  resource.data.userB == request.auth.uid || 
+                  isAdmin());
+      allow create: isAuthenticated() && 
+                   (request.resource.data.userA == request.auth.uid || 
+                    request.resource.data.userB == request.auth.uid);
+      allow update: isAuthenticated() && 
+                   (resource.data.userA == request.auth.uid || 
+                    resource.data.userB == request.auth.uid || 
+                    isAdmin());
+      allow delete: isAuthenticated() && 
+                   (resource.data.userA == request.auth.uid || 
+                    resource.data.userB == request.auth.uid || 
+                    isAdmin());
+    }
+    
+    // Public Groups collection
+    match /publicGroups/{groupId} {
+      allow read: isAdminOrMember(resource.data.admins, resource.data.members);
+      allow create: isAuthenticated();
+      allow update: isAuthenticated() && 
+                   resource.data.admins.contains(request.auth.uid);
+      allow delete: isAuthenticated() && 
+                   (resource.data.creatorUid == request.auth.uid || isAdmin());
+    }
+    
+    // Group Messages collection
+    match /groupMessages/{messageId} {
+      allow read: isAuthenticated() && 
+                 isMember(get(/databases/$(database)/documents/groupMessages/$(messageId)).data.groupId.members);
+      allow create: isAuthenticated() && 
+                   isMember(get(/databases/$(database)/documents/groupMessages/$(messageId)).data.groupId.members);
+      allow update: isAuthenticated() && 
+                   resource.data.senderUid == request.auth.uid;
+      allow delete: isAuthenticated() && 
+                   (resource.data.senderUid == request.auth.uid || isAdmin());
+    }
+    
+    // Private Chats collection
+    match /privateChats/{chatId} {
+      allow read: isAuthenticated() && isParticipant(resource.data.participants);
+      allow create: isAuthenticated() && isParticipant(request.resource.data.participants);
+      allow update: isAuthenticated() && isParticipant(resource.data.participants);
+      allow delete: isAuthenticated() && isParticipant(resource.data.participants);
+    }
+    
+    // Private Messages collection
+    match /privateMessages/{messageId} {
+      allow read: isAuthenticated() && 
+                 isParticipant(get(/databases/$(database)/documents/privateMessages/$(messageId)).data.chatId.participants);
+      allow create: isAuthenticated() && 
+                   isParticipant(get(/databases/$(database)/documents/privateMessages/$(messageId)).data.chatId.participants);
+      allow update: isAuthenticated() && 
+                   resource.data.senderUid == request.auth.uid;
+      allow delete: isAuthenticated() && 
+                   (resource.data.senderUid == request.auth.uid || isAdmin());
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      allow read: isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow create: isAuthenticated();
+      allow update: isAuthenticated() && 
+                   (resource.data.uid == request.auth.uid || isAdmin());
+      allow delete: isAuthenticated() && 
+                   (resource.data.uid == request.auth.uid || isAdmin());
+    }
+    
+    // Admin Logs collection
+    match /adminLogs/{logId} {
+      allow read: isAdmin();
+      allow create: isAdmin();
+      allow update: isAdmin();
+      allow delete: isAdmin();
+    }
+    
+    // Presence collection
+    match /presence/{userId} {
+      allow read: isAuthenticated();
+      allow create: isAuthenticated() && isOwner(userId);
+      allow update: isAuthenticated() && isOwner(userId);
+      allow delete: isAuthenticated() && isOwner(userId);
+    }
+  }
+}

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kurdish Chat - پڕۆفایل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto p-4 max-w-4xl">
+        <!-- Header -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h1 class="text-2xl font-bold text-blue-400">پڕۆفایل</h1>
+                <div class="flex space-x-reverse space-x-2">
+                    <button onclick="goToDashboard()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition">
+                        <svg class="w-5 h-5 inline ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        گەڕانەوە
+                    </button>
+                    <button onclick="logout()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition">
+                        دەرچوون
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Profile Card -->
+            <div class="lg:col-span-1">
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <div class="text-center">
+                        <div class="relative inline-block">
+                            <img id="profilePhoto" src="https://picsum.photos/seed/profile/150/150.jpg" alt="Profile Photo" class="w-32 h-32 rounded-full mx-auto mb-4">
+                            <button onclick="document.getElementById('photoUpload').click()" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-600 hover:bg-blue-700 rounded-full p-2 transition">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                            </button>
+                            <input type="file" id="photoUpload" accept="image/*" class="hidden" onchange="uploadPhoto(event)">
+                        </div>
+                        <h2 id="displayName" class="text-xl font-semibold mb-2">ناوی بەکارهێنەر</h2>
+                        <p id="displayUsername" class="text-gray-400 mb-4">@username</p>
+                        <div class="flex justify-center space-x-reverse space-x-2 text-sm">
+                            <span class="bg-green-600 px-2 py-1 rounded">ئامادە</span>
+                            <span class="bg-gray-600 px-2 py-1 rounded">ئەندام</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="bg-gray-800 rounded-lg p-6 mt-6">
+                    <h3 class="font-semibold mb-4">ئاماری</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">هاوڕێکان</span>
+                            <span id="friendsCount">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">گروپەکان</span>
+                            <span id="groupsCount">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">چاتەکان</span>
+                            <span id="chatsCount">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">بوونی</span>
+                            <span id="memberSince">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Edit Profile -->
+            <div class="lg:col-span-2">
+                <div class="bg-gray-800 rounded-lg p-6">
+                    <h3 class="text-xl font-semibold mb-6">دەستکاری پڕۆفایل</h3>
+                    
+                    <form id="profileForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">ناوی تەواو</label>
+                                <input type="text" id="editName" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ناوی تەواو">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">ناوی بەکارهێنەر</label>
+                                <input type="text" id="editUsername" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ناوی بەکارهێنەر">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">ئیمەیل</label>
+                            <input type="email" id="editEmail" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ئیمەیل" readonly>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">ژیاننامە</label>
+                            <textarea id="editBio" rows="4" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ژیاننامەی خۆت بنووسە..."></textarea>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+                                پاشەکەوتکردن
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Security Settings -->
+                <div class="bg-gray-800 rounded-lg p-6 mt-6">
+                    <h3 class="text-xl font-semibold mb-6">ڕێکخستنەکانی پاراستن</h3>
+                    
+                    <div class="space-y-4">
+                        <button onclick="showChangePassword()" class="w-full text-right px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
+                            گۆڕینی تێپەڕەوشە
+                        </button>
+                        
+                        <button onclick="showTwoFactorSettings()" class="w-full text-right px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
+                            ڕێکخستنەکانی دوو فاکتەر
+                        </button>
+                        
+                        <button onclick="showPrivacySettings()" class="w-full text-right px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
+                            ڕێکخستنەکانی تایبەتی
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Notifications -->
+                <div class="bg-gray-800 rounded-lg p-6 mt-6">
+                    <h3 class="text-xl font-semibold mb-6">ئاگادارکردنەوەکان</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span>ئاگادارکردنەوەکانی نامە</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="messageNotifications" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span>ئاگادارکردنەوەکانی هاوڕێیەتی</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="friendNotifications" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span>ئاگادارکردنەوەکانی گروپ</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="groupNotifications" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-semibold mb-4">گۆڕینی تێپەڕەوشە</h3>
+            <form id="changePasswordForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">تێپەڕەوشەی کۆن</label>
+                    <input type="password" id="currentPassword" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">تێپەڕەوشەی نوێ</label>
+                    <input type="password" id="newPassword" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">دووبارە تێپەڕەوشەی نوێ</label>
+                    <input type="password" id="confirmNewPassword" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="flex space-x-reverse space-x-2">
+                    <button type="submit" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+                        گۆڕین
+                    </button>
+                    <button type="button" onclick="closeChangePassword()" class="flex-1 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition">
+                        داخستن
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 left-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg hidden transition-all duration-300 transform translate-y-full">
+        <span id="toastMessage"></span>
+    </div>
+    
+    <script src="firebase-config-cdn.js"></script>
+    <script src="utils.js"></script>
+    <script src="auth.js"></script>
+    <script src="profile.js"></script>
+</body>
+</html>

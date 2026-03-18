@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kurdish Chat - داشبۆرد</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white h-screen flex overflow-hidden">
+    <!-- Mobile Menu Toggle -->
+    <button onclick="toggleMobileMenu()" class="mobile-menu-toggle fixed top-4 right-4 z-50 bg-gray-800 p-3 rounded-lg shadow-lg hidden">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+    </button>
+    
+    <!-- Sidebar Overlay -->
+    <div onclick="closeMobileMenu()" class="sidebar-overlay fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+    
+    <!-- Sidebar -->
+    <div class="sidebar w-80 lg:w-96 bg-gray-800 border-l border-gray-700 flex flex-col fixed lg:relative inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-50 lg:z-auto">
+        <!-- User Profile -->
+        <div class="user-profile p-6 border-b border-gray-700">
+            <!-- Mobile Close Button -->
+            <button onclick="closeMobileMenu()" class="mobile-close-button lg:hidden absolute top-4 left-4 text-gray-400 hover:text-white transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+            
+            <div class="flex items-center space-x-reverse space-x-4">
+                <img id="userAvatar" src="https://picsum.photos/seed/default/48/48.jpg" alt="Profile" class="user-avatar w-12 h-12 rounded-full">
+                <div class="flex-1">
+                    <h3 id="userName" class="user-name font-semibold text-lg">ناوی بەکارهێنەر</h3>
+                    <p id="userStatus" class="user-status text-sm text-gray-400">ئامادە</p>
+                </div>
+                <div class="flex space-x-reverse space-x-2">
+                    <button onclick="manualRefresh()" class="text-gray-400 hover:text-white transition" title="نوێکردنەوەی خۆکار">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                    </button>
+                    <button onclick="goToProfile()" class="text-gray-400 hover:text-white transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </button>
+                    <button onclick="logout()" class="text-gray-400 hover:text-white transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab Navigation -->
+        <div class="tabs flex border-b border-gray-700">
+            <button onclick="showTab('friends')" class="tab-button active flex-1 py-4 text-center hover:bg-gray-700 transition text-base font-medium" id="friendsTab">هاوڕێکان</button>
+            <button onclick="showTab('groups')" class="tab-button flex-1 py-4 text-center hover:bg-gray-700 transition text-base font-medium" id="groupsTab">گروپ چات</button>
+            <button onclick="showTab('blocked')" class="tab-button flex-1 py-4 text-center hover:bg-gray-700 transition text-base font-medium" id="blockedTab">بلۆككراوەکان</button>
+            <button onclick="showTab('notifications')" class="tab-button flex-1 py-4 text-center hover:bg-gray-700 transition relative text-base font-medium" id="notificationsTab">
+                داواکاریەکان
+                <span id="notificationBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                <button onclick="refreshNotifications(event)" class="absolute -top-1 -left-1 text-gray-400 hover:text-white transition" title="نوێکردنەوە">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                </button>
+            </button>
+        </div>
+        
+        <!-- Notifications Section -->
+        <div id="notificationsList" class="chat-list p-4 space-y-2 hidden">
+            <!-- Friend requests will be loaded here -->
+        </div>
+        
+        <!-- Friends List -->
+        <div id="friendsList" class="chat-list p-4 space-y-2">
+            <!-- Friends will be loaded here -->
+        </div>
+        
+        <!-- Groups Section -->
+        <div id="groupsSection" class="hidden">
+            <!-- Create Group Button -->
+            <div class="p-4">
+                <button onclick="createGroup()" class="w-full py-3 bg-green-600 hover:bg-green-700 rounded-lg font-medium transition flex items-center justify-center text-base">
+                    <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    دروست کردنی گروپی نوێ
+                </button>
+            </div>
+            
+            <!-- Groups List -->
+            <div id="groupsList" class="chat-list p-4 space-y-2">
+                <!-- Groups will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Blocked Users Section -->
+        <div id="blockedList" class="chat-list p-4 space-y-2 hidden">
+            <!-- Blocked users will be loaded here -->
+        </div>
+        
+        <!-- Search Users -->
+        <div class="p-4 border-t border-gray-700">
+            <button onclick="searchUsers()" class="btn btn-secondary w-full">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                گەڕانی بەکارهێنەران
+            </button>
+        </div>
+    </div>
+    
+    <!-- Main Chat Area -->
+    <div class="chat-container flex-1 flex flex-col w-full lg:w-auto">
+        <!-- Chat Header -->
+        <div class="chat-header bg-gray-800 p-4 border-b border-gray-700 flex items-center justify-between">
+            <div class="chat-header-info flex items-center space-x-reverse space-x-3">
+                <img id="chatAvatar" src="https://picsum.photos/seed/chat/40/40.jpg" alt="Chat" class="chat-header-avatar w-10 h-10 rounded-full">
+                <div class="chat-header-details flex-1">
+                    <h2 id="chatName" class="font-semibold">هەڵبژاردنی چات</h2>
+                    <p id="chatStatus" class="text-sm text-gray-400">کەسێک هەڵبژێرە بۆ چاتکردن</p>
+                </div>
+            </div>
+            <div class="flex space-x-reverse space-x-2">
+                <button onclick="showGroupProfileFromChat()" id="groupProfileBtn" class="text-gray-400 hover:text-white transition hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </button>
+                <button onclick="toggleChatInfo()" class="text-gray-400 hover:text-white transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Messages Area -->
+        <div id="messagesArea" class="messages-area flex-1 overflow-y-auto p-4 space-y-4">
+            <!-- Messages will be added here dynamically -->
+            <div class="empty-state text-center text-gray-500 mt-20">
+                <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                </svg>
+                <p>کەسێک هەڵبژێرە بۆ دەستپێکردنی چات</p>
+            </div>
+        </div>
+        
+        <!-- Scroll to Bottom Button -->
+        <button id="scrollToBottom" onclick="scrollToBottom()" class="hidden fixed bottom-20 right-4 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition-all duration-300 z-10">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+            </svg>
+        </button>
+        
+        <!-- Message Input -->
+        <div id="messageInput" class="message-input-container bg-gray-800 p-4 border-t border-gray-700 hidden">
+            <div class="message-input-wrapper flex items-center space-x-reverse space-x-2">
+                <input type="text" id="messageText" placeholder="نامە بنووسە..." class="message-input flex-1 px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onkeypress="if(event.key === 'Enter') sendMessage()">
+                <button id="sendButton" onclick="sendMessage()" class="send-button px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+                    ناردن
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chat Info Sidebar -->
+    <div id="chatInfoSidebar" class="w-80 lg:w-96 bg-gray-800 border-r border-gray-700 hidden fixed lg:relative inset-y-0 right-0 transform translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-40">
+        <div class="p-4 border-b border-gray-700">
+            <div class="flex items-center justify-between">
+                <h3 class="font-semibold">زانیاری چات</h3>
+                <button onclick="toggleChatInfo()" class="text-gray-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div id="chatInfoContent" class="p-4">
+            <!-- Chat info will be added here dynamically -->
+        </div>
+    </div>
+    
+    <!-- User Search Modal -->
+    <div id="userSearchModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold mb-4">گەڕان</h3>
+            
+            <!-- Search Type Selection -->
+            <div class="flex space-x-reverse space-x-2 mb-4">
+                <button onclick="setSearchType('users')" id="searchUsersBtn" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+                    گەڕانی بەکارهێنەر
+                </button>
+                <button onclick="setSearchType('groups')" id="searchGroupsBtn" class="flex-1 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition">
+                    گەڕانی گروپ
+                </button>
+            </div>
+            
+            <!-- Search Input -->
+            <div class="flex space-x-reverse space-x-2 mb-4">
+                <input type="text" id="userSearchInput" placeholder="ناوی بەکارهێنەر بنووسە..." class="flex-1 px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onkeypress="if(event.key === 'Enter') performSearch()">
+                <button onclick="performSearch()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+                    گەڕان
+                </button>
+            </div>
+            <div id="userSearchResults" class="space-y-2 max-h-60 overflow-y-auto">
+                <!-- Search results will be added here -->
+            </div>
+            <button onclick="closeUserSearch()" class="mt-4 w-full py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition">
+                داخستن
+            </button>
+        </div>
+    </div>
+    
+    <!-- Create Group Modal -->
+    <div id="createGroupModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold mb-4">دروستکردنی گروپ</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">ناوی گروپ</label>
+                    <input type="text" id="groupName" placeholder="ناوی گروپ" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">وەسف</label>
+                    <textarea id="groupDescription" placeholder="وەسفی گروپ" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">ئایدی تایبەتی گروپ</label>
+                    <div class="flex space-x-reverse space-x-2">
+                        <input type="text" id="groupUniqueId" placeholder="ئایدی تایبەتی" class="flex-1 px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="button" onclick="generateGroupId()" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+                            دروستکردنی خۆکار
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex space-x-reverse space-x-2 mt-6">
+                <button onclick="createGroupSubmit()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+                    دروستکردن
+                </button>
+                <button onclick="closeCreateGroup()" class="flex-1 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition">
+                    داخستن
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Group Profile Modal -->
+    <div id="groupProfileModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold">پڕۆفایلی گروپ</h3>
+                <button onclick="closeGroupProfile()" class="text-gray-400 hover:text-white transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="text-center mb-6">
+                <img id="groupProfileAvatar" src="https://picsum.photos/seed/group/80/80.jpg" alt="Group Avatar" class="w-20 h-20 rounded-full mx-auto mb-4">
+                <h4 id="groupProfileName" class="text-lg font-semibold mb-2">ناوی گروپ</h4>
+                <p id="groupProfileId" class="text-sm text-gray-400 mb-2">ID: </p>
+                <p id="groupProfileDescription" class="text-sm text-gray-400 mb-4">وەسفی گروپ</p>
+                <div class="flex justify-center space-x-reverse space-x-4 text-sm">
+                    <div>
+                        <span id="groupProfileMemberCount" class="font-semibold">0</span>
+                        <span class="text-gray-400">ئەندام</span>
+                    </div>
+                    <div>
+                        <span id="groupProfileCreated" class="font-semibold">-</span>
+                        <span class="text-gray-400">دروستکراو</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-2">
+                <!-- Admin Controls (only shown to group creator) -->
+                <div id="adminControls" class="hidden space-y-2">
+                    <div class="p-3 bg-gray-700 rounded">
+                        <h5 class="font-semibold mb-2">کۆنتڕۆڵی ئەدمین</h5>
+                        <div class="space-y-2">
+                            <button onclick="showEditGroupName()" class="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm">
+                                گۆڕینی ناوی گروپ
+                            </button>
+                            <button onclick="showAddMembers()" class="w-full py-2 bg-green-600 hover:bg-green-700 rounded text-sm">
+                                زیادکردنی ئەندام
+                            </button>
+                            <button onclick="showDeleteGroupConfirmation()" class="w-full py-2 bg-red-600 hover:bg-red-700 rounded text-sm">
+                                سڕینەوەی گروپ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-3 bg-gray-700 rounded">
+                    <h5 class="font-semibold mb-2">ئەندامانی گروپ</h5>
+                    <div id="groupProfileMembers" class="space-y-2 max-h-32 overflow-y-auto">
+                        <!-- Members will be loaded here -->
+                    </div>
+                </div>
+                
+                <div class="flex space-x-reverse space-x-2">
+                    <button onclick="leaveGroup()" id="leaveGroupBtn" class="flex-1 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition">
+                        دەرچوون لە گروپ
+                    </button>
+                    <button onclick="closeGroupProfile()" class="flex-1 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition">
+                        داخستن
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Group Name Modal -->
+    <div id="editGroupNameModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold mb-4">گۆڕینی ناوی گروپ</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">ناوی گروپ</label>
+                    <input type="text" id="editGroupNameInput" placeholder="ناوی گروپ" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <div class="flex space-x-reverse space-x-2 mt-6">
+                <button onclick="updateGroupName()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+                    گۆڕین
+                </button>
+                <button onclick="closeEditGroupName()" class="flex-1 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition">
+                    داخستن
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Members Modal -->
+    <div id="addMembersModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold mb-4">زیادکردنی ئەندام</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">گەڕان بەدوای بەکارهێنەر</label>
+                    <input type="text" id="addMemberSearchInput" placeholder="ناوی بەکارهێنەر بنووسە..." class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div id="addMemberSearchResults" class="space-y-2 max-h-40 overflow-y-auto">
+                    <!-- Search results will be shown here -->
+                </div>
+            </div>
+            <div class="flex space-x-reverse space-x-2 mt-6">
+                <button onclick="closeAddMembers()" class="flex-1 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition">
+                    داخستن
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Group Confirmation Modal -->
+    <div id="deleteGroupModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-xl font-semibold mb-4 text-red-400">سڕینەوەی گروپ</h3>
+            <div class="space-y-4">
+                <div class="bg-red-900 bg-opacity-20 border border-red-600 rounded p-3">
+                    <p class="text-sm text-red-300">
+                        <strong>ئاگاداری!</strong> ئەم کارە نەگەڕێنەوەیە. گروپەکە و هەموو نامەکانی دەسڕێتەوە بۆ هەمیشه.
+                    </p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">تکایە ناوی گروپەکە بنووسە بۆ دڵنیابونەوە:</label>
+                    <input type="text" id="deleteGroupConfirmationInput" placeholder="ناوی گروپ" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+            </div>
+            <div class="flex space-x-reverse space-x-2 mt-6">
+                <button onclick="deleteGroup()" id="confirmDeleteBtn" class="flex-1 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    سڕینەوەی گروپ
+                </button>
+                <button onclick="closeDeleteGroupConfirmation()" class="flex-1 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition">
+                    پاشگەزبوونەوە
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Profile Modal -->
+    <div id="userProfileModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold">پڕۆفایلی بەکارهێنەر</h3>
+                <button onclick="closeUserProfile()" class="text-gray-400 hover:text-white transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="text-center mb-6">
+                <img id="userProfileAvatar" src="https://picsum.photos/seed/default/80/80.jpg" alt="User Avatar" class="w-20 h-20 rounded-full mx-auto mb-4">
+                <h4 id="userProfileName" class="text-lg font-semibold mb-2">ناوی بەکارهێنەر</h4>
+                <p id="userProfileUsername" class="text-sm text-gray-400 mb-2">@username</p>
+                <p id="userProfileStatus" class="text-sm text-gray-400 mb-4">ئامادە</p>
+            </div>
+            
+            <div class="space-y-2">
+                <div class="flex space-x-reverse space-x-2">
+                    <button onclick="startPrivateChatFromProfile()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition">
+                        چاتکردن
+                    </button>
+                    <button onclick="toggleBlockUser()" id="blockUnblockBtn" class="flex-1 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition">
+                        بلۆك کردن
+                    </button>
+                </div>
+                <div class="flex space-x-reverse space-x-2">
+                    <button onclick="removeFriendFromProfile()" id="removeFriendBtn" class="flex-1 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg font-medium transition">
+                        لابردنی هاوڕی
+                    </button>
+                    <button onclick="closeUserProfile()" class="flex-1 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition">
+                        داخستن
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 left-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg hidden transition-all duration-300 transform translate-y-full">
+        <span id="toastMessage"></span>
+    </div>
+    
+    <script src="firebase-config-cdn.js"></script>
+    <script src="utils.js"></script>
+    <script src="auth.js"></script>
+    <script src="chat.js"></script>
+</body>
+</html>

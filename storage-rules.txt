@@ -1,0 +1,58 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Profile Photos
+    match /profilePhotos/{userId}/{allPaths=**} {
+      allow read: isAuthenticated();
+      allow write: isAuthenticated() && isOwner(userId);
+      allow delete: isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+    
+    // Group Photos (optional future feature)
+    match /groupPhotos/{groupId}/{allPaths=**} {
+      allow read: isAuthenticated();
+      allow write: isAuthenticated() && 
+                   firestore.get(/databases/(default)/documents/publicGroups/$(groupId)).data.admins.contains(request.auth.uid);
+      allow delete: isAuthenticated() && 
+                   (firestore.get(/databases/(default)/documents/publicGroups/$(groupId)).data.admins.contains(request.auth.uid) || isAdmin());
+    }
+    
+    // Message Attachments (optional future feature)
+    match /messageAttachments/{messageId}/{allPaths=**} {
+      allow read: isAuthenticated() && 
+                  (firestore.get(/databases/(default)/documents/privateMessages/$(messageId)).data.chatId.participants.contains(request.auth.uid) ||
+                   firestore.get(/databases/(default)/documents/groupMessages/$(messageId)).data.groupId.members.contains(request.auth.uid));
+      allow write: isAuthenticated() && 
+                  (firestore.get(/databases/(default)/documents/privateMessages/$(messageId)).data.senderUid == request.auth.uid ||
+                   firestore.get(/databases/(default)/documents/groupMessages/$(messageId)).data.senderUid == request.auth.uid);
+      allow delete: isAuthenticated() && 
+                  (firestore.get(/databases/(default)/documents/privateMessages/$(messageId)).data.senderUid == request.auth.uid ||
+                   firestore.get(/databases/(default)/documents/groupMessages/$(messageId)).data.senderUid == request.auth.uid ||
+                   isAdmin());
+    }
+    
+    // Admin Files
+    match /admin/{allPaths=**} {
+      allow read, write, delete: isAdmin();
+    }
+    
+    // Default deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
